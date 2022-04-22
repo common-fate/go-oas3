@@ -1400,7 +1400,18 @@ func (generator *Generator) wrapperStr(in string, name string, paramName string,
 	case "header":
 		result = result.Add(jen.Id(paramName).Op(":=").Id("r").Dot("Header").Dot("Get").Call(jen.Lit(parameter.Value.Name)))
 	case "query":
-		result = result.Add(jen.Id(paramName).Op(":=").Id("r").Dot("URL").Dot("Query").Call().Dot("Get").Call(jen.Lit(parameter.Value.Name)))
+		// for string arrays, we need to generate something which looks like the following:
+		// queryTags := r.URL.Query()["tags"]
+		//
+		// for regular strings, we need to generate something like this:
+		// queryTags := r.URL.Query().Get("tags")
+		result = result.Add(jen.Id(paramName).Op(":=").Id("r").Dot("URL").Dot("Query").Call())
+
+		if parameter.Value.Schema.Value.Type != "array" {
+			result = result.Add(jen.Dot("Get").Call(jen.Lit(parameter.Value.Name)))
+		} else {
+			result = result.Add(jen.Index(jen.Lit(parameter.Value.Name)))
+		}
 	case "path":
 		result = result.Add(jen.Id(paramName).Op(":=").Id("chi").Dot("URLParam").Call(jen.Id("r"), jen.Lit(parameter.Value.Name)))
 	default:
