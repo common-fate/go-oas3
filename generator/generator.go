@@ -1133,10 +1133,9 @@ func (generator *Generator) groupedOperations(swagger *openapi3.T) []groupedOper
 			return linq.From(kv.Value.(*openapi3.PathItem).Operations()).
 				SelectT(func(kv linq.KeyValue) groupedOperations {
 					operation := kv.Value.(*openapi3.Operation)
-					tag := operation.Tags[0]
 
 					return groupedOperations{
-						tag:        tag,
+						tag:        operationTag(operation),
 						operations: []operationWithPath{{operation: operation, path: path, method: cast.ToString(kv.Key)}},
 					}
 				})
@@ -1878,8 +1877,9 @@ func (generator *Generator) builders(swagger *openapi3.T) (result jen.Code) {
 
 				operationResponses = append(operationResponses, or)
 			}
+
 			os := operationStruct{
-				Tag:                   operation.Tags[0],
+				Tag:                   operationTag(operation),
 				Name:                  name,
 				PrivateName:           generator.normalizer.decapitalize(name),
 				RequestName:           name + "Request",
@@ -1930,7 +1930,7 @@ func (generator *Generator) handlersInterfaces(swagger *openapi3.T) jen.Code {
 
 				linq.From(kv.Value.(*openapi3.PathItem).Operations()).
 					GroupByT(func(kv linq.KeyValue) string {
-						return generator.normalizer.normalize(kv.Value.(*openapi3.Operation).Tags[0])
+						return generator.normalizer.normalize(operationTag(kv.Value.(*openapi3.Operation)))
 					},
 						func(kv linq.KeyValue) []jen.Code {
 							name := generator.normalizer.normalizeOperationName(path, cast.ToString(kv.Key))
@@ -2228,6 +2228,14 @@ func (generator *Generator) responseContentTypeBuilder(contentTypeName string, c
 		jen.Line().Return().Op("&").Id(nextBuilderName).Values(jen.Id("response").Op(":").Id("builder").Dot("response")),
 	))
 	return
+}
+
+// operationTag returns the first tag associated with the operation, or "default" if none are provided.
+func operationTag(o *openapi3.Operation) string {
+	if o == nil || o.Tags == nil {
+		return "default"
+	}
+	return o.Tags[0]
 }
 
 func (generator *Generator) responseAssembler(assemblerName string, interfaceResponseName string, responseName string) (results []jen.Code) {
