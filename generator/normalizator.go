@@ -56,6 +56,11 @@ func (normalizer *Normalizer) normalize(str string) string {
 		}
 	}
 
+	// check for reserved keywords
+	if n == "Error" {
+		n = "ApiError"
+	}
+
 	return n
 }
 
