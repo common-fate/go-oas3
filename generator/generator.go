@@ -2030,9 +2030,7 @@ func (generator *Generator) responseBuilders(operationStruct operationStruct) je
 			//prepend generated code in following order: assemble -> (optional: content type) -> (optional: headers) -> status codes
 			var nextBuilderName string
 
-			// for APIs that only serve JSON, config.SkipContentTypeBuilder can be set to true which avoids generating .ApplicationJson()
-			// on all of the builders.
-			if hasContentTypes && !generator.config.SkipContentTypeBuilder {
+			if hasContentTypes {
 				contentTypeBuilderName := generator.contentTypeBuilderName(operationStruct.PrivateName + resp.StatusCode)
 				//content-type struct
 				results = append(results, jen.Type().Id(contentTypeBuilderName).Struct(jen.Id("response")))
@@ -2143,21 +2141,28 @@ func (generator *Generator) responseCookiesBuilder(cookieBuilderName string, nex
 }
 
 func (generator *Generator) responseContentTypeBuilder(contentTypeName string, contentType string, contentTypeBuilderName string, bodyBuilderName string, nextBuilderName string) (results []jen.Code) {
-	//content-type -> body
-	contentTypeFuncName := generator.contentTypeFuncName(contentTypeName)
-	results = append(results, jen.Func().Params(
-		jen.Id("builder").Op("*").Id(contentTypeBuilderName)).Id(contentTypeFuncName).Params().Params(
-		jen.Op("*").Id(bodyBuilderName)).Block(
-		jen.Id("builder").Dot("response").Dot("contentType").Op("=").Lit(contentTypeName),
-		jen.Line().Return().Op("&").Id(bodyBuilderName).Values(jen.Id("response").Op(":").Id("builder").Dot("response")),
-	))
+
+	builderName := contentTypeBuilderName
+
+	if !generator.config.SkipContentTypeBuilder {
+		//content-type -> body
+		contentTypeFuncName := generator.contentTypeFuncName(contentTypeName)
+		results = append(results, jen.Func().Params(
+			jen.Id("builder").Op("*").Id(builderName)).Id(contentTypeFuncName).Params().Params(
+			jen.Op("*").Id(bodyBuilderName)).Block(
+			jen.Id("builder").Dot("response").Dot("contentType").Op("=").Lit(contentTypeName),
+			jen.Line().Return().Op("&").Id(bodyBuilderName).Values(jen.Id("response").Op(":").Id("builder").Dot("response")),
+		))
+
+		builderName = bodyBuilderName
+	}
 
 	//body struct
 	results = append(results, jen.Type().Id(bodyBuilderName).Struct(jen.Id("response")))
 
 	//body builder
 	results = append(results, jen.Func().Params(
-		jen.Id("builder").Op("*").Id(bodyBuilderName)).Id("Body").Params(
+		jen.Id("builder").Op("*").Id(builderName)).Id("Body").Params(
 		jen.Id("body").Qual(generator.config.ComponentsPackage, contentType)).Params(
 		jen.Op("*").Id(nextBuilderName)).Block(
 		jen.Id("builder").Dot("response").Dot("body").Op("=").Id("body"),
