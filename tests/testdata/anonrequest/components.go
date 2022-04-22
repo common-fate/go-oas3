@@ -8,33 +8,6 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
-type postCarsApplicationJsonRequestBody struct {
-	Test *string `json:"test"`
-}
-
-type PostCarsApplicationJsonRequestBody struct {
-	Test string `json:"test"`
-}
-
-func (body *PostCarsApplicationJsonRequestBody) UnmarshalJSON(data []byte) error {
-	var value postCarsApplicationJsonRequestBody
-	if err := json.Unmarshal(data, &value); err != nil {
-		return err
-	}
-
-	if value.Test == nil {
-		return fmt.Errorf("test is required")
-	}
-
-	body.Test = *value.Test
-
-	return nil
-}
-func (body PostCarsApplicationJsonRequestBody) Validate() error {
-	return validation.ValidateStruct(&body,
-		validation.Field(&body.Test, validation.Required, validation.RuneLength(10, 0)))
-}
-
 type postCarsRequestBody struct {
 	Test *string `json:"test"`
 }
