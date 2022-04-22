@@ -8,7 +8,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	v5 "github.com/go-chi/chi/v5"
+	chi "github.com/go-chi/chi/v5"
 	"net/http"
 )
 
@@ -75,7 +75,7 @@ func (r RequestProcessingResult) Err() error {
 	return r.error
 }
 
-func CarsHandler(impl CarsService, r v5.Router, hooks *Hooks) http.Handler {
+func CarsHandler(impl CarsService, r chi.Router, hooks *Hooks) http.Handler {
 	router := &carsRouter{router: r, service: impl, hooks: hooks}
 
 	router.mount()
@@ -84,7 +84,7 @@ func CarsHandler(impl CarsService, r v5.Router, hooks *Hooks) http.Handler {
 }
 
 type carsRouter struct {
-	router  v5.Router
+	router  chi.Router
 	service CarsService
 	hooks   *Hooks
 }
@@ -251,6 +251,29 @@ func (response getCarsResponse) cookies() []http.Cookie {
 	return response.response.cookies
 }
 
+type getCarsApplicationjson struct {
+	Car Car `json:"car"`
+}
+
+type GetCarsApplicationjson struct {
+	Car Car `json:"car"`
+}
+
+func (body *GetCarsApplicationjson) UnmarshalJSON(data []byte) error {
+	var value getCarsApplicationjson
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+
+	body.Car = value.Car
+
+	return nil
+}
+
+func (body GetCarsApplicationjson) Validate() error {
+	return nil
+}
+
 type getCarsStatusCodeResponseBuilder struct {
 	response
 }
@@ -281,7 +304,7 @@ type getCars200ApplicationJsonBodyBuilder struct {
 	response
 }
 
-func (builder *getCars200ContentTypeBuilder) Body(body Car) *GetCars200ApplicationJsonResponseBuilder {
+func (builder *getCars200ContentTypeBuilder) Body(body GetCarsApplicationjson) *GetCars200ApplicationJsonResponseBuilder {
 	builder.response.body = body
 
 	return &GetCars200ApplicationJsonResponseBuilder{response: builder.response}

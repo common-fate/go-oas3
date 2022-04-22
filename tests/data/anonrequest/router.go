@@ -5,10 +5,7 @@ package output
 import (
 	"context"
 	"encoding/json"
-	"encoding/xml"
-	"errors"
-	"fmt"
-	v5 "github.com/go-chi/chi/v5"
+	chi "github.com/go-chi/chi/v5"
 	"net/http"
 )
 
@@ -75,7 +72,7 @@ func (r RequestProcessingResult) Err() error {
 	return r.error
 }
 
-func CarsHandler(impl CarsService, r v5.Router, hooks *Hooks) http.Handler {
+func CarsHandler(impl CarsService, r chi.Router, hooks *Hooks) http.Handler {
 	router := &carsRouter{router: r, service: impl, hooks: hooks}
 
 	router.mount()
@@ -84,39 +81,70 @@ func CarsHandler(impl CarsService, r v5.Router, hooks *Hooks) http.Handler {
 }
 
 type carsRouter struct {
-	router  v5.Router
+	router  chi.Router
 	service CarsService
 	hooks   *Hooks
 }
 
 func (router *carsRouter) mount() {
-	router.router.Get("/cars", router.GetCars)
+	router.router.Post("/cars", router.PostCars)
 }
 
-func (router *carsRouter) parseGetCarsRequest(r *http.Request) (request GetCarsRequest) {
+func (router *carsRouter) parsePostCarsRequest(r *http.Request) (request PostCarsRequest) {
 	request.ProcessingResult = RequestProcessingResult{typee: ParseSucceed}
 
+	var (
+		body      PostCarsRequestBody
+		decodeErr error
+	)
+	decodeErr = json.NewDecoder(r.Body).Decode(&body)
+	if decodeErr != nil {
+		request.ProcessingResult = RequestProcessingResult{error: decodeErr, typee: BodyUnmarshalFailed}
+		if router.hooks.RequestBodyUnmarshalFailed != nil {
+			router.hooks.RequestBodyUnmarshalFailed(r, "PostCars", request.ProcessingResult)
+
+			return
+		}
+
+		return
+	}
+
+	request.Body = body
+
+	if err := request.Body.Validate(); err != nil {
+		request.ProcessingResult = RequestProcessingResult{error: err, typee: BodyValidationFailed}
+		if router.hooks.RequestBodyValidationFailed != nil {
+			router.hooks.RequestBodyValidationFailed(r, "PostCars", request.ProcessingResult)
+		}
+
+		return
+	}
+
+	if router.hooks.RequestBodyUnmarshalCompleted != nil {
+		router.hooks.RequestBodyUnmarshalCompleted(r, "PostCars")
+	}
+
 	if router.hooks.RequestParseCompleted != nil {
-		router.hooks.RequestParseCompleted(r, "GetCars")
+		router.hooks.RequestParseCompleted(r, "PostCars")
 	}
 
 	return
 }
 
-func (router *carsRouter) GetCars(w http.ResponseWriter, r *http.Request) {
+func (router *carsRouter) PostCars(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	response := router.service.GetCars(r.Context(), router.parseGetCarsRequest(r))
+	response := router.service.PostCars(r.Context(), router.parsePostCarsRequest(r))
 
 	if response.statusCode() == 302 && response.redirectURL() != "" {
 		if router.hooks.RequestRedirectStarted != nil {
-			router.hooks.RequestRedirectStarted(r, "GetCars", response.redirectURL())
+			router.hooks.RequestRedirectStarted(r, "PostCars", response.redirectURL())
 		}
 
 		http.Redirect(w, r, response.redirectURL(), 302)
 
 		if router.hooks.ServiceCompleted != nil {
-			router.hooks.ServiceCompleted(r, "GetCars")
+			router.hooks.ServiceCompleted(r, "PostCars")
 		}
 
 		return
@@ -132,69 +160,13 @@ func (router *carsRouter) GetCars(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if router.hooks.RequestProcessingCompleted != nil {
-		router.hooks.RequestProcessingCompleted(r, "GetCars")
-	}
-
-	if len(response.contentType()) > 0 {
-		w.Header().Set("content-type", response.contentType())
+		router.hooks.RequestProcessingCompleted(r, "PostCars")
 	}
 
 	w.WriteHeader(response.statusCode())
 
-	if response.body() != nil {
-		var (
-			data []byte
-			err  error
-		)
-
-		switch response.contentType() {
-		case "application/xml":
-			data, err = xml.Marshal(response.body())
-		case "application/octet-stream":
-			var ok bool
-			if data, ok = (response.body()).([]byte); !ok {
-				err = errors.New("body is not []byte")
-			}
-		case "text/html":
-			data = []byte(fmt.Sprint(response.body()))
-		case "application/json":
-			fallthrough
-		default:
-			data, err = json.Marshal(response.body())
-		}
-
-		if err != nil {
-			if router.hooks.ResponseBodyMarshalFailed != nil {
-				router.hooks.ResponseBodyMarshalFailed(w, r, "GetCars", err)
-			}
-
-			return
-		}
-
-		if router.hooks.ResponseBodyMarshalCompleted != nil {
-			router.hooks.ResponseBodyMarshalCompleted(r, "GetCars")
-		}
-
-		count, err := w.Write(data)
-		if err != nil {
-			if router.hooks.ResponseBodyWriteFailed != nil {
-				router.hooks.ResponseBodyWriteFailed(r, "GetCars", count, err)
-			}
-
-			if router.hooks.ResponseBodyWriteCompleted != nil {
-				router.hooks.ResponseBodyWriteCompleted(r, "GetCars", count)
-			}
-
-			return
-		}
-
-		if router.hooks.ResponseBodyWriteCompleted != nil {
-			router.hooks.ResponseBodyWriteCompleted(r, "GetCars", count)
-		}
-	}
-
 	if router.hooks.ServiceCompleted != nil {
-		router.hooks.ServiceCompleted(r, "GetCars")
+		router.hooks.ServiceCompleted(r, "PostCars")
 	}
 }
 
@@ -216,82 +188,69 @@ type responseInterface interface {
 	headers() map[string]string
 }
 
-type GetCarsResponse interface {
+type PostCarsResponse interface {
 	responseInterface
-	getCarsResponse()
+	postCarsResponse()
 }
 
-type getCarsResponse struct {
+type postCarsResponse struct {
 	response
 }
 
-func (getCarsResponse) getCarsResponse() {}
+func (postCarsResponse) postCarsResponse() {}
 
-func (response getCarsResponse) statusCode() int {
+func (response postCarsResponse) statusCode() int {
 	return response.response.statusCode
 }
 
-func (response getCarsResponse) body() interface{} {
+func (response postCarsResponse) body() interface{} {
 	return response.response.body
 }
 
-func (response getCarsResponse) contentType() string {
+func (response postCarsResponse) contentType() string {
 	return response.response.contentType
 }
 
-func (response getCarsResponse) redirectURL() string {
+func (response postCarsResponse) redirectURL() string {
 	return response.response.redirectURL
 }
 
-func (response getCarsResponse) headers() map[string]string {
+func (response postCarsResponse) headers() map[string]string {
 	return response.response.headers
 }
 
-func (response getCarsResponse) cookies() []http.Cookie {
+func (response postCarsResponse) cookies() []http.Cookie {
 	return response.response.cookies
 }
 
-type getCarsStatusCodeResponseBuilder struct {
+type postCarsStatusCodeResponseBuilder struct {
 	response
 }
 
-func GetCarsResponseBuilder() *getCarsStatusCodeResponseBuilder {
-	return new(getCarsStatusCodeResponseBuilder)
+func PostCarsResponseBuilder() *postCarsStatusCodeResponseBuilder {
+	return new(postCarsStatusCodeResponseBuilder)
 }
 
-func (builder *getCarsStatusCodeResponseBuilder) StatusCode200() *getCars200ContentTypeBuilder {
+func (builder *postCarsStatusCodeResponseBuilder) StatusCode200() *PostCars200ResponseBuilder {
 	builder.response.statusCode = 200
 
-	return &getCars200ContentTypeBuilder{response: builder.response}
+	return &PostCars200ResponseBuilder{response: builder.response}
 }
 
-type getCars200ContentTypeBuilder struct {
+type PostCars200ResponseBuilder struct {
 	response
 }
 
-type GetCars200ApplicationJsonResponseBuilder struct {
-	response
-}
-
-func (builder *GetCars200ApplicationJsonResponseBuilder) Build() GetCarsResponse {
-	return getCarsResponse{response: builder.response}
-}
-
-type getCars200ApplicationJsonBodyBuilder struct {
-	response
-}
-
-func (builder *getCars200ContentTypeBuilder) Body(body CarResponse) *GetCars200ApplicationJsonResponseBuilder {
-	builder.response.body = body
-
-	return &GetCars200ApplicationJsonResponseBuilder{response: builder.response}
+func (builder *PostCars200ResponseBuilder) Build() PostCarsResponse {
+	return postCarsResponse{response: builder.response}
 }
 
 type CarsService interface {
-	GetCars(context.Context, GetCarsRequest) GetCarsResponse
+	PostCars(context.Context, PostCarsRequest) PostCarsResponse
 }
 
-type GetCarsRequest struct {
+type PostCarsRequest struct {
+	Body             PostCarsRequestBody
 	ProcessingResult RequestProcessingResult
 }
 

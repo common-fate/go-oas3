@@ -14,7 +14,7 @@ import (
 )
 
 func TestGolden(t *testing.T) {
-	files, err := filepath.Glob("./testdata/*/swagger.yaml")
+	files, err := filepath.Glob("./data/*/swagger.yaml")
 	if err != nil {
 		log.Fatal(err)
 	}

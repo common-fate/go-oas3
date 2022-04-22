@@ -8,7 +8,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	v5 "github.com/go-chi/chi/v5"
+	chi "github.com/go-chi/chi/v5"
 	"net/http"
 )
 
@@ -75,7 +75,7 @@ func (r RequestProcessingResult) Err() error {
 	return r.error
 }
 
-func CarsHandler(impl CarsService, r v5.Router, hooks *Hooks) http.Handler {
+func CarsHandler(impl CarsService, r chi.Router, hooks *Hooks) http.Handler {
 	router := &carsRouter{router: r, service: impl, hooks: hooks}
 
 	router.mount()
@@ -84,7 +84,7 @@ func CarsHandler(impl CarsService, r v5.Router, hooks *Hooks) http.Handler {
 }
 
 type carsRouter struct {
-	router  v5.Router
+	router  chi.Router
 	service CarsService
 	hooks   *Hooks
 }
@@ -269,14 +269,6 @@ type getCars200ContentTypeBuilder struct {
 	response
 }
 
-type GetCars200ApplicationXmlResponseBuilder struct {
-	response
-}
-
-func (builder *GetCars200ApplicationXmlResponseBuilder) Build() GetCarsResponse {
-	return getCarsResponse{response: builder.response}
-}
-
 type GetCars200ApplicationJsonResponseBuilder struct {
 	response
 }
@@ -285,33 +277,11 @@ func (builder *GetCars200ApplicationJsonResponseBuilder) Build() GetCarsResponse
 	return getCarsResponse{response: builder.response}
 }
 
-func (builder *getCars200ContentTypeBuilder) ApplicationXml() *getCars200ApplicationXmlBodyBuilder {
-	builder.response.contentType = "application/xml"
-
-	return &getCars200ApplicationXmlBodyBuilder{response: builder.response}
-}
-
-type getCars200ApplicationXmlBodyBuilder struct {
-	response
-}
-
-func (builder *getCars200ApplicationXmlBodyBuilder) Body(body CarResponseApplicationxml) *GetCars200ApplicationXmlResponseBuilder {
-	builder.response.body = body
-
-	return &GetCars200ApplicationXmlResponseBuilder{response: builder.response}
-}
-
-func (builder *getCars200ContentTypeBuilder) ApplicationJson() *getCars200ApplicationJsonBodyBuilder {
-	builder.response.contentType = "application/json"
-
-	return &getCars200ApplicationJsonBodyBuilder{response: builder.response}
-}
-
 type getCars200ApplicationJsonBodyBuilder struct {
 	response
 }
 
-func (builder *getCars200ApplicationJsonBodyBuilder) Body(body CarResponseApplicationjson) *GetCars200ApplicationJsonResponseBuilder {
+func (builder *getCars200ContentTypeBuilder) Body(body Car) *GetCars200ApplicationJsonResponseBuilder {
 	builder.response.body = body
 
 	return &GetCars200ApplicationJsonResponseBuilder{response: builder.response}

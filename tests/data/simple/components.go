@@ -4,16 +4,16 @@ package output
 
 import "encoding/json"
 
-type carResponse struct {
+type car struct {
 	ID string `json:"id"`
 }
 
-type CarResponse struct {
+type Car struct {
 	ID string `json:"id"`
 }
 
-func (body *CarResponse) UnmarshalJSON(data []byte) error {
-	var value carResponse
+func (body *Car) UnmarshalJSON(data []byte) error {
+	var value car
 	if err := json.Unmarshal(data, &value); err != nil {
 		return err
 	}
@@ -22,6 +22,7 @@ func (body *CarResponse) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
-func (body CarResponse) Validate() error {
+
+func (body Car) Validate() error {
 	return nil
 }

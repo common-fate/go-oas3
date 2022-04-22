@@ -22,6 +22,7 @@ func (body *CarResponseApplicationjson) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
 func (body CarResponseApplicationjson) Validate() error {
 	return nil
 }
@@ -44,6 +45,7 @@ func (body *CarResponseApplicationxml) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
 func (body CarResponseApplicationxml) Validate() error {
 	return nil
 }

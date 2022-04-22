@@ -25,6 +25,7 @@ func (body *Car) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
 func (body Car) Validate() error {
 	return nil
 }
@@ -47,6 +48,7 @@ func (body *Wheel) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
 func (body Wheel) Validate() error {
 	return nil
 }

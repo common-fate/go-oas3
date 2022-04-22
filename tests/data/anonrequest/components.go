@@ -30,6 +30,7 @@ func (body *PostCarsRequestBody) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
 func (body PostCarsRequestBody) Validate() error {
 	return validation.ValidateStruct(&body,
 		validation.Field(&body.Test, validation.Required, validation.RuneLength(10, 0)))
