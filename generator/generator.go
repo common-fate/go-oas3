@@ -652,14 +652,14 @@ func (generator *Generator) componentFromSchema(name string, parentSchema *opena
 	if len(parentSchema.Value.Properties) == 0 {
 		if len(parentSchema.Value.Enum) > 0 {
 			generator.typee.fillGoType(typeDeclaration, "", name+"Enum", parentSchema, false, false)
-			return typeDeclaration
+			return typeDeclaration.Add(jen.Line())
 		}
 
 		//validateFunc := generator.validationFuncFromRules("body", name, nil)
 		generator.typee.fillGoType(typeDeclaration, "", name, parentSchema, false, true)
 
 		//return typeDeclaration.Add(jen.Line(), validateFunc)
-		return typeDeclaration
+		return typeDeclaration.Add(jen.Line())
 	}
 
 	componentStruct := typeDeclaration.Struct(generator.typeProperties(name, parentSchema.Value, false)...)
