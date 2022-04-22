@@ -82,7 +82,7 @@ func (generator *Generator) requestParameters(paths map[string]*openapi3.PathIte
 			linq.From(kv.Value.(*openapi3.PathItem).Operations()).
 				GroupByT(
 					func(kv linq.KeyValue) string {
-						return generator.normalizer.normalize(kv.Value.(*openapi3.Operation).Tags[0])
+						return generator.normalizer.normalize(operationTag(kv.Value.(*openapi3.Operation)))
 					},
 					func(kv linq.KeyValue) (result []jen.Code) {
 						name := generator.normalizer.normalizeOperationName(path, cast.ToString(kv.Key))
