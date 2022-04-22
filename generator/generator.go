@@ -2030,7 +2030,9 @@ func (generator *Generator) responseBuilders(operationStruct operationStruct) je
 			//prepend generated code in following order: assemble -> (optional: content type) -> (optional: headers) -> status codes
 			var nextBuilderName string
 
-			if hasContentTypes {
+			// for APIs that only serve JSON, config.SkipContentTypeBuilder can be set to true which avoids generating .ApplicationJson()
+			// on all of the builders.
+			if hasContentTypes && !generator.config.SkipContentTypeBuilder {
 				contentTypeBuilderName := generator.contentTypeBuilderName(operationStruct.PrivateName + resp.StatusCode)
 				//content-type struct
 				results = append(results, jen.Type().Id(contentTypeBuilderName).Struct(jen.Id("response")))
