@@ -12,7 +12,6 @@ import (
 
 const (
 	goType            = "x-go-type"
-	goMapType         = "x-go-map-type"
 	goTypeStringParse = "x-go-type-string-parse"
 	goPointer         = "x-go-pointer"
 	goRegex           = "x-go-regex"
@@ -67,7 +66,10 @@ func (typ *Type) fillGoType(into *jen.Statement, parentTypeName string, typeName
 		allOfSchema := schema.AllOf[0]
 
 		for i := 1; i < len(schema.AllOf); i++ {
-			mergo.Merge(&allOfSchema, schema.AllOf[i])
+			err := mergo.Merge(&allOfSchema, schema.AllOf[i])
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		typ.fillGoType(into, parentTypeName, typeName, allOfSchema, false, needAliasing)
@@ -197,14 +199,6 @@ func (typ *Type) hasXGoType(schema *openapi3.Schema) bool {
 	return false
 }
 
-func (typ *Type) hasXGoMapType(schema *openapi3.Schema) bool {
-	if len(schema.Extensions) > 0 && schema.Extensions[goMapType] != nil {
-		return true
-	}
-
-	return false
-}
-
 func (typ *Type) hasXGoPointer(schema *openapi3.Schema) bool {
 	if len(schema.Extensions) > 0 && schema.Extensions[goPointer] != nil {
 		return true
@@ -235,45 +229,6 @@ func (typ *Type) getXGoTypeStringParse(schema *openapi3.Schema) (string, string,
 	}
 
 	return "", "", false
-}
-
-func (typ *Type) getXGoMapType(schema *openapi3.Schema) (keyPkg string, key string, keyIsType bool, valuePkg string, value string, valueIsType bool, isValueArr bool, found bool) {
-	if typ.hasXGoMapType(schema) {
-		var customType string
-
-		if err := json.Unmarshal(schema.Extensions[goMapType].(json.RawMessage), &customType); err != nil {
-			panic(err)
-		}
-
-		if strings.HasPrefix(customType, "map[") {
-			keyPkg = customType[4:]
-			keyPkg = keyPkg[:strings.Index(keyPkg, "]")]
-			dotIndex := strings.LastIndex(keyPkg, ".")
-			if dotIndex > 0 {
-				keyIsType = true
-				key = keyPkg[dotIndex+1:]
-				keyPkg = keyPkg[:dotIndex]
-			}
-
-			valuePkg = customType[strings.Index(customType, "]")+1:]
-
-			isValueArr = strings.HasPrefix(valuePkg, "[]")
-			if isValueArr {
-				valuePkg = valuePkg[2:]
-			}
-
-			dotIndex = strings.LastIndex(valuePkg, ".")
-			if dotIndex > 0 {
-				valueIsType = true
-				value = valuePkg[dotIndex+1:]
-				valuePkg = valuePkg[:dotIndex]
-			}
-
-			found = true
-		}
-	}
-
-	return
 }
 
 func (typ *Type) getXGoType(schema *openapi3.Schema) (string, string, bool) {

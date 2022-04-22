@@ -279,8 +279,7 @@ func (generator *Generator) additionalConstants(swagger *openapi3.T) (jen.Code, 
 	var constantsComponentsCode []jen.Code
 
 	linq.From(swagger.Components.Schemas).SelectManyT(func(kv linq.KeyValue) linq.Query {
-		namePrefix := generator.normalizer.normalize(cast.ToString(kv.Key))
-		namePrefix = generator.normalizer.decapitalize(cast.ToString(kv.Key))
+		namePrefix := generator.normalizer.decapitalize(cast.ToString(kv.Key))
 		schema := kv.Value.(*openapi3.SchemaRef)
 
 		return linq.From(schema.Value.Properties).SelectT(func(kv linq.KeyValue) jen.Code {
@@ -634,7 +633,6 @@ func (generator *Generator) fieldValidationRuleFromSchema(receiverName string, p
 			if v.ExclusiveMax {
 				r.Dot("Exclusive").Call()
 			}
-			rules = append(rules)
 		}
 		if len(rules) > 0 {
 			params := append([]jen.Code{jen.Op("&").Id(receiverName).Dot(propertyName)}, rules...)
@@ -1331,7 +1329,6 @@ func (generator *Generator) wrapperCustomType(in string, name string, paramName 
 				Add(jen.Id("request").Dot(strings.Title(in)).Dot(name).Op("=").Id(paramName))
 
 			result.Add(generator.wrapRequired(paramName+"Str", parameter.Value.Required, parameterCode))
-			break
 		case "iso4217-currency-code":
 			parameterCode := jen.Null().
 				Add(jen.List(jen.Id(paramName), jen.Id("err")).Op(":=").Qual("github.com/mikekonan/go-types/currency", "ByCodeStrErr").Call(jen.Id(paramName+"Str"))).
@@ -1341,7 +1338,6 @@ func (generator *Generator) wrapperCustomType(in string, name string, paramName 
 				Add(jen.Id("request").Dot(strings.Title(in)).Dot(name).Op("=").Id(paramName).Dot("Code").Call())
 
 			result.Add(generator.wrapRequired(paramName+"Str", parameter.Value.Required, parameterCode))
-			break
 		case "iso3166-alpha-2":
 			parameterCode := jen.Null().
 				Add(jen.List(jen.Id(paramName), jen.Id("err")).Op(":=").Qual("github.com/mikekonan/go-types/country", "ByAlpha2CodeStrErr").Call(jen.Id(paramName+"Str"))).
@@ -1351,7 +1347,6 @@ func (generator *Generator) wrapperCustomType(in string, name string, paramName 
 				Add(jen.Id("request").Dot(strings.Title(in)).Dot(name).Op("=").Id(paramName).Dot("Alpha2Code").Call())
 
 			result.Add(generator.wrapRequired(paramName+"Str", parameter.Value.Required, parameterCode))
-			break
 		default:
 		}
 	}
@@ -2007,12 +2002,6 @@ func (generator *Generator) responseStruct() jen.Code {
 			jen.Id("headers").Params().Map(jen.Id("string")).Id("string")))
 }
 
-func (generator *Generator) responseInterface(name string) jen.Code {
-	name = generator.normalizer.decapitalize(name)
-
-	return jen.Type().Id(name + "Response").Interface(jen.Id(name + "Response").Params())
-}
-
 func (generator *Generator) responseType(name string) jen.Code {
 	decapicalizedName := generator.normalizer.decapitalize(name)
 	capitalizedName := strings.Title(name)
@@ -2061,10 +2050,6 @@ func (generator *Generator) responseType(name string) jen.Code {
 		))
 
 	return jen.Null().Add(generator.normalizer.doubleLineAfterEachElement(interfaceDeclaration, declaration, interfaceImplementation)...)
-}
-
-func (generator *Generator) responseImplementationFunc(name string) jen.Code {
-	return jen.Func().Params(jen.Id(strings.Title(name) + "Response")).Id(generator.normalizer.decapitalize(name) + "Response").Params().Block()
 }
 
 //if hasHeaders && hasContentTypes
