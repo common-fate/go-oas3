@@ -47,6 +47,7 @@ func (generator *Generator) file(from jen.Code, packagePath string) *jen.File {
 	file.ImportAlias("github.com/mikekonan/go-types/country", "countries")
 	file.ImportAlias("github.com/mikekonan/go-types/currency", "currency")
 	file.ImportAlias("github.com/go-ozzo/ozzo-validation/v4", "validation")
+	file.ImportAlias("github.com/go-chi/chi/v5", "chi")
 
 	file.Add(from)
 
