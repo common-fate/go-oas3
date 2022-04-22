@@ -8,7 +8,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	chi "github.com/go-chi/chi"
+	chi "github.com/go-chi/chi/v5"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	cast "github.com/spf13/cast"
 	"io/ioutil"
