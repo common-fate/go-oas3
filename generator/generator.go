@@ -21,6 +21,20 @@ type Generator struct {
 	config     *configurator.Config `di.inject:"config"`
 }
 
+// New creates a new generator (without di.inject)
+func New(cfg configurator.Config) *Generator {
+	normalizer := &Normalizer{}
+
+	return &Generator{
+		normalizer: normalizer,
+		typee: &Type{
+			normalizer: normalizer,
+			config:     &cfg,
+		},
+		config: &cfg,
+	}
+}
+
 type Result struct {
 	ComponentsCode *jen.File
 	RouterCode     *jen.File
@@ -126,6 +140,25 @@ func (generator *Generator) requestParameters(paths map[string]*openapi3.PathIte
 func (generator *Generator) components(swagger *openapi3.T) jen.Code {
 	var componentsResult []jen.Code
 
+	var resultsResult []jen.Code
+
+	// code-generate Go types from OpenAPI Response components.
+	for name, response := range swagger.Components.Responses {
+		// if we have multiple MIME Types, we generate response types for each one.
+		// however, if we just have one, we can generate a shorter struct name for it.
+		appendMIMEType := len(response.Value.Content) > 1
+
+		for mimeType, mediaType := range response.Value.Content {
+			schemaName := name
+			if appendMIMEType {
+				schemaName += generator.normalizer.normalize(mimeType)
+			}
+
+			code := generator.componentFromSchema(schemaName, mediaType.Schema)
+			resultsResult = append(resultsResult, code)
+		}
+	}
+
 	linq.From(swagger.Components.Schemas).
 		WhereT(func(kv linq.KeyValue) bool { return len(kv.Value.(*openapi3.SchemaRef).Value.Enum) == 0 }). //filter enums
 		SelectT(func(kv linq.KeyValue) jen.Code {
@@ -133,6 +166,8 @@ func (generator *Generator) components(swagger *openapi3.T) jen.Code {
 			return generator.componentFromSchema(cast.ToString(kv.Key), schemaRef)
 		}).
 		ToSlice(&componentsResult)
+
+	componentsResult = append(componentsResult, resultsResult...)
 
 	var componentsFromPathsResult []jen.Code
 	linq.From(swagger.Paths).
@@ -712,7 +747,7 @@ func (generator *Generator) componentFromSchema(name string, parentSchema *opena
 		Add(componentStruct).
 		Add(jen.Line().Line()).
 		Add(unmarshalFunc).
-		Add(validateFunc)
+		Add(validateFunc).Add(jen.Line())
 }
 
 func (generator *Generator) typeProperties(typeName string, schema *openapi3.Schema, pointersForRequired bool) (parameters []jen.Code) {
@@ -1774,66 +1809,74 @@ type operationStruct struct {
 func (generator *Generator) builders(swagger *openapi3.T) (result jen.Code) {
 	var builders []jen.Code
 
-	linq.From(swagger.Paths).
-		SelectManyT(func(kv linq.KeyValue) linq.Query {
-			path := cast.ToString(kv.Key)
-			var operationStructs []operationStruct
+	for pathName, path := range swagger.Paths {
+		for name, operation := range path.Operations() {
+			name = generator.normalizer.normalizeOperationName(pathName, name)
+			var operationResponses []operationResponse
+			for statusCode, response := range operation.Responses {
+				or := operationResponse{
+					ContentTypeBodyNameMap: make(map[string]string),
+				}
 
-			linq.From(kv.Value.(*openapi3.PathItem).Operations()).
-				SelectT(func(kv linq.KeyValue) operationStruct {
-					name := generator.normalizer.normalizeOperationName(path, cast.ToString(kv.Key))
-					operation := kv.Value.(*openapi3.Operation)
-					var operationResponses []operationResponse
-
-					linq.From(operation.Responses).
-						SelectT(func(kv linq.KeyValue) (response operationResponse) {
-							response.ContentTypeBodyNameMap = map[string]string{}
-
-							headers := map[string]*openapi3.HeaderRef{}
-							for k, v := range kv.Value.(*openapi3.ResponseRef).Value.Headers {
-								if strings.ToLower(k) == "set-cookie" {
-									response.SetCookie = true
-									continue
-								}
-								headers[k] = v
-							}
-
-							response.Headers = headers
-
-							linq.From(kv.Value.(*openapi3.ResponseRef).Value.Content).
-								ToMapByT(&response.ContentTypeBodyNameMap,
-									func(kv linq.KeyValue) string { return cast.ToString(kv.Key) },
-									func(kv linq.KeyValue) (structName string) {
-										if "" == kv.Value.(*openapi3.MediaType).Schema.Ref {
-											structName = name
-											structName += strings.Title(generator.normalizer.normalize(cast.ToString(kv.Key)))
-											return structName
-										}
-
-										structName = generator.normalizer.extractNameFromRef(kv.Value.(*openapi3.MediaType).Schema.Ref)
-										return
-									})
-
-							response.StatusCode = cast.ToString(kv.Key)
-
-							return
-						}).ToSlice(&operationResponses)
-
-					return operationStruct{
-						Tag:                   operation.Tags[0],
-						Name:                  name,
-						PrivateName:           generator.normalizer.decapitalize(name),
-						RequestName:           name + "Request",
-						InterfaceResponseName: name + "Response",
-						ResponseName:          generator.normalizer.decapitalize(name + "Response"),
-						Responses:             operationResponses,
+				headers := map[string]*openapi3.HeaderRef{}
+				for k, v := range response.Value.Headers {
+					if strings.ToLower(k) == "set-cookie" {
+						or.SetCookie = true
+						continue
 					}
-				}).ToSlice(&operationStructs)
+					headers[k] = v
+				}
 
-			return linq.From(operationStructs)
-		}).
-		SelectT(func(operationStruct operationStruct) jen.Code { return generator.responseBuilders(operationStruct) }).
-		ToSlice(&builders)
+				or.Headers = headers
+
+				// if we have multiple MIME Types, we generate response types for each one.
+				// however, if we just have one, we can generate a shorter struct name for it.
+				appendMIMEType := len(response.Value.Content) > 1
+
+				for contentType, mediaType := range response.Value.Content {
+					// fallback to a default name e.g. 'GetCarsApplicationjson'
+					structName := ""
+
+					if response.Ref != "" {
+						structName = generator.normalizer.extractNameFromRef(response.Ref)
+						if appendMIMEType {
+							structName += generator.normalizer.normalize(contentType)
+						}
+					}
+
+					if mediaType.Schema.Ref != "" {
+						structName = generator.normalizer.extractNameFromRef(mediaType.Schema.Ref)
+					}
+
+					if structName == "" {
+						structName = name + strings.Title(generator.normalizer.normalize(contentType))
+
+						// generate a type for the response struct
+						responseStruct := generator.componentFromSchema(structName, mediaType.Schema)
+						builders = append(builders, responseStruct)
+					}
+
+					or.ContentTypeBodyNameMap[contentType] = structName
+				}
+
+				or.StatusCode = statusCode
+
+				operationResponses = append(operationResponses, or)
+			}
+			os := operationStruct{
+				Tag:                   operation.Tags[0],
+				Name:                  name,
+				PrivateName:           generator.normalizer.decapitalize(name),
+				RequestName:           name + "Request",
+				InterfaceResponseName: name + "Response",
+				ResponseName:          generator.normalizer.decapitalize(name + "Response"),
+				Responses:             operationResponses,
+			}
+
+			code := generator.responseBuilders(os)
+			builders = append(builders, code)
+		}
+	}
 
 	return jen.Null().Add(builders...)
 }
@@ -2047,7 +2090,8 @@ func (generator *Generator) responseBuilders(operationStruct operationStruct) je
 						bodyBuilderName := generator.bodyGeneratorName(operationStruct.PrivateName+resp.StatusCode, contentTypeName)
 						assemblerName := generator.assemblerName(operationStruct.Name + resp.StatusCode + generator.normalizer.contentType(contentTypeName))
 
-						result = append(result, generator.responseContentTypeBuilder(contentTypeName, contentType, contentTypeBuilderName, bodyBuilderName, assemblerName)...)
+						skipContentType := len(resp.ContentTypeBodyNameMap) <= 1
+						result = append(result, generator.responseContentTypeBuilder(contentTypeName, contentType, contentTypeBuilderName, bodyBuilderName, assemblerName, skipContentType)...)
 
 						//assembler struct, build
 						results = append(results, generator.responseAssembler(assemblerName, operationStruct.InterfaceResponseName, operationStruct.ResponseName)...)
@@ -2140,11 +2184,11 @@ func (generator *Generator) responseCookiesBuilder(cookieBuilderName string, nex
 	return
 }
 
-func (generator *Generator) responseContentTypeBuilder(contentTypeName string, contentType string, contentTypeBuilderName string, bodyBuilderName string, nextBuilderName string) (results []jen.Code) {
+func (generator *Generator) responseContentTypeBuilder(contentTypeName string, contentType string, contentTypeBuilderName string, bodyBuilderName string, nextBuilderName string, skipContentType bool) (results []jen.Code) {
 
 	builderName := contentTypeBuilderName
 
-	if !generator.config.SkipContentTypeBuilder {
+	if !skipContentType {
 		//content-type -> body
 		contentTypeFuncName := generator.contentTypeFuncName(contentTypeName)
 		results = append(results, jen.Func().Params(

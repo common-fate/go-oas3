@@ -20,8 +20,7 @@ type Config struct {
 	ComponentsPackage string `config:"componentsPackage"`
 	ComponentsPath    string `config:"componentsPath"`
 
-	Authorization          string `config:"authorization,short=a,description=a list of comma-separated key:value pairs to be sent as headers alongside each http request"`
-	SkipContentTypeBuilder bool   `config:"skip-content-type-builder"`
+	Authorization string `config:"authorization,short=a,description=a list of comma-separated key:value pairs to be sent as headers alongside each http request"`
 }
 
 func (config *Config) Defaults() *Config {
