@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/common-fate/go-oas3/configurator"
 	"github.com/dave/jennifer/jen"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/imdario/mergo"
-	"github.com/mikekonan/go-oas3/configurator"
 )
 
 const (

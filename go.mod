@@ -1,4 +1,4 @@
-module github.com/mikekonan/go-oas3
+module github.com/common-fate/go-oas3
 
 go 1.15
 

@@ -1,9 +1,9 @@
 package application
 
 import (
-	"github.com/mikekonan/go-oas3/generator"
-	"github.com/mikekonan/go-oas3/loader"
-	"github.com/mikekonan/go-oas3/writer"
+	"github.com/common-fate/go-oas3/generator"
+	"github.com/common-fate/go-oas3/loader"
+	"github.com/common-fate/go-oas3/writer"
 )
 
 type Application struct {

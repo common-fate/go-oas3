@@ -7,8 +7,8 @@ import (
 
 	"github.com/dave/jennifer/jen"
 
-	"github.com/mikekonan/go-oas3/configurator"
-	"github.com/mikekonan/go-oas3/generator"
+	"github.com/common-fate/go-oas3/configurator"
+	"github.com/common-fate/go-oas3/generator"
 )
 
 type Writer struct {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 
-	"github.com/mikekonan/go-oas3/configurator"
+	"github.com/common-fate/go-oas3/configurator"
 )
 
 type Loader struct {

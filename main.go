@@ -6,11 +6,11 @@ import (
 
 	"github.com/goioc/di"
 
-	"github.com/mikekonan/go-oas3/application"
-	"github.com/mikekonan/go-oas3/configurator"
-	"github.com/mikekonan/go-oas3/generator"
-	"github.com/mikekonan/go-oas3/loader"
-	"github.com/mikekonan/go-oas3/writer"
+	"github.com/common-fate/go-oas3/application"
+	"github.com/common-fate/go-oas3/configurator"
+	"github.com/common-fate/go-oas3/generator"
+	"github.com/common-fate/go-oas3/loader"
+	"github.com/common-fate/go-oas3/writer"
 )
 
 func main() {
