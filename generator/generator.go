@@ -760,7 +760,7 @@ func (generator *Generator) componentFromSchema(name string, parentSchema *opena
 		Add(jen.Line().Line()).
 		Add(componentStruct).
 		Add(jen.Line().Line()).
-		Add(unmarshalFunc).
+		Add(unmarshalFunc).Add(jen.Line()).
 		Add(validateFunc).Add(jen.Line())
 }
 
