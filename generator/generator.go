@@ -159,6 +159,19 @@ func (generator *Generator) components(swagger *openapi3.T) jen.Code {
 		}
 	}
 
+	// code-generate Go types from OpenAPI anonymous Request components.
+	for pathName, path := range swagger.Paths {
+		for opName, op := range path.Operations() {
+			if op.RequestBody != nil {
+				for mimeType, mediaType := range op.RequestBody.Value.Content {
+					schemaName := generator.normalizer.normalizeOperationName(pathName, opName) + generator.normalizer.contentType(mimeType) + "RequestBody"
+					code := generator.componentFromSchema(schemaName, mediaType.Schema)
+					resultsResult = append(resultsResult, code)
+				}
+			}
+		}
+	}
+
 	linq.From(swagger.Components.Schemas).
 		WhereT(func(kv linq.KeyValue) bool { return len(kv.Value.(*openapi3.SchemaRef).Value.Enum) == 0 }). //filter enums
 		SelectT(func(kv linq.KeyValue) jen.Code {

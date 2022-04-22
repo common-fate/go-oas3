@@ -1,0 +1,29 @@
+openapi: 3.0.0
+info:
+  title: Simple
+  version: "1.0"
+servers:
+  - url: "https://example.com"
+paths:
+  /cars:
+    post:
+      summary: ""
+      operationId: post-cars
+      responses:
+        "200":
+          description: OK
+      tags:
+        - cars
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                test:
+                  type: string
+                  minLength: 10
+              required:
+                - test
+components:
+  schemas: {}
