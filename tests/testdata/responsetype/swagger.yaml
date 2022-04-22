@@ -1,0 +1,26 @@
+openapi: 3.0.0
+info:
+  title: Simple
+  version: "1.0"
+servers:
+  - url: "https://example.com"
+paths:
+  /cars:
+    get:
+      summary: Get Cars
+      operationId: get-health
+      responses:
+        "200":
+          $ref: "#/components/responses/CarResponse"
+      tags:
+        - cars
+components:
+  responses:
+    CarResponse:
+      description: Example response
+      content:
+        application/json:
+          schema:
+            properties:
+              id:
+                type: string

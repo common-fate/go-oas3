@@ -13,6 +13,11 @@ type Loader struct {
 	config *configurator.Config `di.inject:"config"`
 }
 
+// New creates a loader (without using di.inject)
+func New(c configurator.Config) *Loader {
+	return &Loader{config: &c}
+}
+
 func (loader *Loader) Load() (*openapi3.T, error) {
 	openapiLoader := openapi3.NewLoader()
 	openapiLoader.IsExternalRefsAllowed = true

@@ -1,0 +1,39 @@
+openapi: 3.0.0
+info:
+  title: Simple
+  version: "1.0"
+servers:
+  - url: "https://example.com"
+paths:
+  /cars:
+    get:
+      summary: Get Cars
+      operationId: get-health
+      tags:
+        - cars
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  car:
+                    $ref: "#/components/schemas/Car"
+components:
+  schemas:
+    Car:
+      title: Car
+      type: object
+      properties:
+        id:
+          type: string
+        wheel:
+          $ref: "#/components/schemas/Wheel"
+    Wheel:
+      title: Wheel
+      type: object
+      properties:
+        id:
+          type: string
